@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+        <style>
+            body {
+                font-family: roboto;
+            }
+
+            .btn {
+                margin: 16px;
+                display: inline-block;
+                background: #009688;
+                color: #fff;
+                font-size: 18px;
+                padding: 12px;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+            .material-icons {
+                vertical-align: middle;
+            }
+
+            .active .material-icons {
+                animation: spin-animation 1.5s infinite;
+            }
+
+            .active {
+                pointer-events: none;
+                opacity: 0.8;
+            }
+
+            @keyframes spin-animation {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Merging audio and video</h1>
+        <div>Combine audio and video files into one MP4 video</div>
+
+        <div style="padding: 24px;"></div>
+
+        <div style="padding: 14px;">
+            <label for="vidFile">Select Video file : </label>
+            <input id="vidFile" type="file" accept="video/*" />
+        </div>
+
+        <div style="padding: 14px;">
+            <label for="audFile">Select Audio file : </label>
+            <input id="audFile" type="file" accept="audio/*" />
+        </div>
+
+        <div>
+            <div id="convertBtn" onclick="convertRun()" class="btn">
+                <span class="material-icons">autorenew</span>
+                Convert
+            </div>
+            <div id="outputLink" style="display: inline-block;"></div>
+        </div>
+
+        <script>
+            var inputVideoData, inputAudioData, buffersReady, workerReady, worker;
+            var posted = false;
+
+            document.body.onload = function () {
+                console.log("wait...");
+                convertStreams();
+            };
+
+            function convertRun() {
+                var vidInput = document.getElementById("vidFile").files[0];
+                var audInput = document.getElementById("audFile").files[0];
+
+                inputAudioData = "";
+                inputVideoData = "";
+                buffersReady = false;
+                posted = false;
+
+                if (vidInput && audInput) {
+                    document.getElementById("convertBtn").classList.add("active");
+                    document.getElementById("outputLink").innerHTML = "";
+                    retrieveInputFile(URL.createObjectURL(vidInput), "video");
+                    retrieveInputFile(URL.createObjectURL(audInput), "audio");
+                } else {
+                    alert("Please select both audio and video file");
+                }
+            }
+
+            function retrieveInputFile(fileURL, fileType) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", fileURL);
+                xhr.responseType = "arraybuffer";
+
+                xhr.onload = function (evt) {
+                    var arrayBuffer = xhr.response;
+                    if (arrayBuffer) {
+                        if (fileType === "video") {
+                            inputVideoData = new Uint8Array(arrayBuffer);
+                            if (inputAudioData) buffersReady = true;
+                            if (buffersReady && workerReady && !posted) postMessage();
+                        } else if (fileType === "audio") {
+                            inputAudioData = new Uint8Array(arrayBuffer);
+                            if (inputVideoData) buffersReady = true;
+                            if (buffersReady && workerReady && !posted) postMessage();
+                        }
+                    }
+                };
+
+                xhr.send();
+            }
+
+            var workerPath = "https://drive.google.com/uc?export=view&id=1poIStQi60YOZPT1UmZUKslRPE9nQ4n3A";
+
+            function processInWebWorker() {
+                var blob = URL.createObjectURL(
+                    new Blob(
+                        [
+                            'importScripts("' + workerPath + '");var now = Date.now;function print(text) {postMessage({"type" : "stdout","data" : text});};onmessage = function(event) {var message = event.data;if (message.type === "command") {var Module = {print: print,printErr: print,files: message.files || [],arguments: message.arguments || [],TOTAL_MEMORY: message.TOTAL_MEMORY || false};postMessage({"type" : "start","data" : Module.arguments.join(" ")});postMessage({"type" : "stdout","data" : "Received command: " +Module.arguments.join(" ") +((Module.TOTAL_MEMORY) ? ".  Processing with " + Module.TOTAL_MEMORY + " bits." : "")});var time = now();var result = ffmpeg_run(Module);var totalTime = now() - time;postMessage({"type" : "stdout","data" : "Finished processing (took " + totalTime + "ms)"});postMessage({"type" : "done","data" : result,"time" : totalTime});}};postMessage({"type" : "ready"});',
+                        ],
+                        {
+                            type: "application/javascript",
+                        }
+                    )
+                );
+
+                var worker = new Worker(blob);
+                URL.revokeObjectURL(blob);
+                return worker;
+            }
+
+            function convertStreams() {
+                if (!worker) {
+                    worker = processInWebWorker();
+                }
+
+                worker.onmessage = function (event) {
+                    var message = event.data;
+                    if (message.type == "ready") {
+                        console.log("ffmpeg file has been loaded.");
+                        workerReady = true;
+
+                        if (buffersReady) postMessage();
+                    } else if (message.type == "stdout") {
+                        console.log(message.data);
+                        //console.log(JSON.stringify(message));
+                    } else if (message.type == "start") {
+                        //console.log('start >>  received ffmpeg command.');
+                    } else if (message.type == "done") {
+                        console.log(JSON.stringify(message));
+                        getDownloadLink(message);
+                    }
+                };
+            }
+
+            var postMessage = function () {
+                posted = true;
+
+                worker.postMessage({
+                    type: "command",
+                    arguments: [
+                        "-i", "audio.wav", 
+                        "-i", "video.webm", 
+                        "-c:v", "mpeg4", 
+                        "-c:a", "vorbis", 
+                        "-b:v", "6400k", 
+                        "-b:a", "4800k", 
+                        "-vf", "showinfo", 
+                        "-strict", "experimental", 
+                        "output.mp4"
+                    ],
+                    files: [
+                        {
+                            data: inputVideoData,
+                            name: "video.webm",
+                        },
+                        {
+                            data: inputAudioData,
+                            name: "audio.wav",
+                        },
+                    ],
+                });
+            };
+
+            function getDownloadLink(outputResult) {
+                if (outputResult) {
+                    var result = outputResult.data[0];
+                    if (result) {
+                        var a = document.createElement("a");
+                        a.download = result.name;
+                        var blob = new Blob([result.data]);
+                        var src = window.URL.createObjectURL(blob);
+                        a.href = src;
+                        a.innerHTML = '<div class="btn" > <span class="material-icons"> arrow_circle_down </span> Download </div>';
+                        document.getElementById("outputLink").appendChild(a);
+                    } else {
+                        document.getElementById("outputLink").innerHTML = "Error: Something went wrong. File not converted successfully.";
+                    }
+
+                    document.getElementById("convertBtn").classList.remove("active");
+                    outputResult = "";
+                } else {
+                    console.log("Error: Something went wrong");
+                }
+            }
+        </script>
+    </body>
+</html>

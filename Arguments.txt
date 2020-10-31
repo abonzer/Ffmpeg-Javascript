@@ -1,0 +1,101 @@
+// Audio + Video
+// don't change sequence
+
+var argumentAV1 = [    
+    '-i', 'audio.wav',    
+    '-i', 'video.webm',
+    '-c:a', 'ac3',
+    '-b:a', '4800k',
+    '-c:v', 'mpeg4',    
+    '-b:v', '6400k',    
+    '-strict', '-2', 'output.mp4'            
+];
+
+
+var argumentAV2 = [
+    '-i', 'audio.wav',
+    '-i', 'video.webm',    
+    '-c:v', 'mpeg4',
+    '-c:a', 'vorbis',
+    '-b:v', '6400k',
+    '-b:a', '4800k',
+    '-strict', 'experimental', 'output.mp4'           
+];
+
+
+var argumentAV3 = [
+    '-i', 'audio.wav',
+    '-i', 'video.webm',    
+    '-c:v', 'mpeg4',
+    '-c:a', 'aac', 
+    '-b:v', '1450k',  
+    '-b:a', '96k', 
+    '-strict', 'experimental', 'output.mp4'          
+];
+
+
+var argumentAV4 = [
+    '-i', 'audio.wav',
+    '-i', 'video.webm',    
+    '-c:v', 'mpeg4',
+    '-c:a', 'vorbis',
+    '-b:v', '48k',
+    '-b:a', '8k',
+    '-strict', 'experimental', 'output.mp4'          
+];
+
+
+var argumentAV5 = [ 
+    '-i', 'audio.wav',
+    '-i', 'video.webm',
+    '-c:a', 'aac',
+    '-b:a', '96k',        
+    '-c:v', 'mpeg4',
+    '-b:v', '1450k',   
+    '-strict', 'experimental', 'output.mp4'           
+];
+
+
+
+// only Audio
+//---------------
+
+var argumentA1 = [    
+    '-i', 'audio.wav',    
+    '-c:a', 'aac',    
+    '-b:a', '96k',
+    '-strict', 'experimental', 'output.mp4'           
+];
+
+
+var argumentA2 = '-i audio.wav -c:a vorbis -b:a 4800k -strict experimental output.ogg'.split(' ');
+
+
+
+
+// only Video
+// --------------
+
+var argumentV1 = [    
+    '-i', 'video.webm',    
+    '-c:v', 'mpeg4',    
+    '-b:v', '6400k',
+    '-strict', 'experimental', 
+    'output.mp4'           
+];
+
+
+
+
+// video-cropping
+-----------------------
+
+var argumentV2 = [    
+    '-i', 'video.webm', 
+    '-vf', 'scale=3840:2160',   
+    '-c:v', 'mpeg4',    
+    '-b:v', '6400k',
+    '-filter:v', 'crop=in_w-60:in_h-60:30:30',
+    '-c:a', 'copy',
+    'output.mp4'           
+];
